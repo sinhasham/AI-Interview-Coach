@@ -1,9 +1,20 @@
-def generate_feedback():
+def generate_feedback(answer):
 
-    return """
-Strengths:
-- Good communication
+    feedback = []
 
-Improvements:
-- Add more technical depth
-"""
+    if len(answer) < 50:
+        feedback.append(
+            "Try explaining in more detail."
+        )
+
+    if len(answer) > 100:
+        feedback.append(
+            "Good level of explanation."
+        )
+
+    if not feedback:
+        feedback.append(
+            "Keep practicing."
+        )
+
+    return "\n".join(feedback)

@@ -1,4 +1,11 @@
 def evaluate_answer(answer):
-    if len(answer) > 50:
-        return " Good answer! You covered the topic well."
-    return " Try adding more details and examples to strengthen your answer."
+
+    score = min(len(answer) // 20, 10)
+
+    if score >= 8:
+        return "Excellent Answer ⭐"
+
+    elif score >= 5:
+        return "Good Answer 👍"
+
+    return "Needs More Details ⚠️"

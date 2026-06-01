@@ -214,20 +214,83 @@ if prompt:
 
         if prompt.lower() == "start mock interview":
 
-            bot_reply = start_mock_interview(role)
+            if role == "DevOps":
+
+                bot_reply = """
+🎤 Mock Interview Started
+
+Question 1:
+
+What is CI/CD?
+
+Reply using:
+
+Answer: your answer
+"""
+
+            elif role == "AWS":
+
+                bot_reply = """
+🎤 Mock Interview Started
+
+Question 1:
+
+What is EC2?
+
+Reply using:
+
+Answer: your answer
+"""
+
+            elif role == "SDE":
+
+                bot_reply = """
+🎤 Mock Interview Started
+
+Question 1:
+
+Explain OOPs.
+
+Reply using:
+
+Answer: your answer
+"""
+
+            else:
+
+                bot_reply = """
+🎤 Mock Interview Started
+
+Question 1:
+
+Tell me about yourself.
+
+Reply using:
+
+Answer: your answer
+"""
 
         elif prompt.lower().startswith("answer:"):
 
-            answer = prompt.replace("answer:", "").strip()
+            answer = prompt.replace(
+                "answer:",
+                ""
+            ).strip()
 
             bot_reply = f"""
-### Evaluation
+## Evaluation
 
 {evaluate_answer(answer)}
 
-### Feedback
+## Feedback
 
 {generate_feedback()}
+
+Type:
+
+Start Mock Interview
+
+to begin another round.
 """
 
         else:
