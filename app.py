@@ -116,7 +116,7 @@ if resume_text_manual:
         )
 
 # ==========================
-# CHAT HISTORY
+# CHAT HISTORY INIT
 # ==========================
 
 if "messages" not in st.session_state:
@@ -157,8 +157,48 @@ if "gap_job_description" not in st.session_state:
 if "gap_role" not in st.session_state:
     st.session_state.gap_role = ""
 
-# Display previous messages
+# ==========================
+# WELCOME MESSAGE
+# ==========================
 
+if len(st.session_state.messages) == 0:
+    welcome_message = """
+👋 **Welcome to PrepIQ — AI Interview Coach!**
+
+Here's what I can do for you:
+
+---
+
+### 🗂️ Flow 1 — Resume Interview
+Type: **review my resume**
+> I'll ask you to paste your resume, then generate **5 personalized interview questions** based on your experience.
+
+---
+
+### 📊 Flow 2 — Resume Gap Analysis
+Type: **I want to apply for DevOps role, here is the job description: [paste JD here]**
+> I'll ask for your resume, then tell you:
+> - ✅ What you already have
+> - ❌ What is missing
+> - 📝 Exact lines to add to get selected
+
+---
+
+### 🎤 Other Features
+- **Start Mock Interview** → Role-based technical interview
+- **Boost Confidence** → Motivational message
+- **Paste Resume in sidebar** → Get ATS Score + Suggestions
+
+**Let's get started! 🚀**
+"""
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": welcome_message
+        }
+    )
+
+# Display previous messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -252,7 +292,6 @@ if prompt:
 
         # ==========================
         # FLOW 2 — GAP ANALYSIS TRIGGER
-        # Detects: "I want to apply for X role"
         # ==========================
 
         if any(phrase in prompt.lower() for phrase in [
