@@ -8,7 +8,7 @@ from prompts.system_prompt import SYSTEM_PROMPT
 from resume.ats_scorer import calculate_ats_score
 from resume.resume_reviewer import review_resume
 
-from mock_interview.interviewer import start_mock_interview
+from mock_interview.interviewer import start_mock_interview, get_questions
 from mock_interview.evaluator import evaluate_answer
 from mock_interview.feedback import generate_feedback
 
@@ -69,10 +69,24 @@ if st.sidebar.button("Boost Confidence"):
 
 # Start Mock Interview button in sidebar — opens question in chat
 if st.sidebar.button("Start Mock Interview"):
+
+    questions = get_questions(role)
+
+    st.session_state.interview_active = True
+    st.session_state.interview_questions = questions
+    st.session_state.interview_index = 0
+    st.session_state.interview_scores = []
+
     st.session_state.messages.append(
         {
             "role": "assistant",
-            "content": start_mock_interview(role)
+            "content": f"""
+🎤 Mock Interview Started for **{role}**
+
+**Question 1:**
+
+{questions[0]}
+"""
         }
     )
 
@@ -106,6 +120,18 @@ if resume_text:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if "interview_active" not in st.session_state:
+    st.session_state.interview_active = False
+
+if "interview_index" not in st.session_state:
+    st.session_state.interview_index = 0
+
+if "interview_questions" not in st.session_state:
+    st.session_state.interview_questions = []
+
+if "interview_scores" not in st.session_state:
+    st.session_state.interview_scores = []
 
 # Display previous messages
 
@@ -218,29 +244,100 @@ if prompt:
 
         if prompt.lower() == "start mock interview":
 
-            bot_reply = start_mock_interview(role)
+            questions = get_questions(role)
 
-        elif prompt.lower().startswith("answer:"):
-
-            answer = prompt.replace(
-                "answer:",
-                ""
-            ).strip()
+            st.session_state.interview_active = True
+            st.session_state.interview_questions = questions
+            st.session_state.interview_index = 0
+            st.session_state.interview_scores = []
 
             bot_reply = f"""
+🎤 Mock Interview Started for **{role}**
+
+**Question 1:**
+
+{questions[0]}
+"""
+
+        elif st.session_state.interview_active:
+
+            # Treat any message as an answer during interview
+
+            answer = prompt
+            evaluation = evaluate_answer(answer)
+            feedback = generate_feedback()
+
+            # Track score
+            score = min(len(answer) // 20, 10)
+            st.session_state.interview_scores.append(score)
+
+            current_index = st.session_state.interview_index
+            questions = st.session_state.interview_questions
+            next_index = current_index + 1
+
+            if next_index < len(questions):
+
+                # More questions remaining
+
+                st.session_state.interview_index = next_index
+
+                bot_reply = f"""
 ## Evaluation
 
-{evaluate_answer(answer)}
+{evaluation}
 
 ## Feedback
 
-{generate_feedback()}
+{feedback}
 
-Type:
+---
 
-Start Mock Interview
+**Question {next_index + 1}:**
 
-to begin another round.
+{questions[next_index]}
+"""
+
+            else:
+
+                # All questions done — show final scorecard
+
+                st.session_state.interview_active = False
+
+                total = sum(st.session_state.interview_scores)
+                max_score = len(questions) * 10
+                percentage = int((total / max_score) * 100)
+
+                if percentage >= 80:
+                    grade = "🏆 Excellent"
+                elif percentage >= 60:
+                    grade = "👍 Good"
+                elif percentage >= 40:
+                    grade = "⚠️ Needs Improvement"
+                else:
+                    grade = "📚 Keep Practicing"
+
+                bot_reply = f"""
+## Evaluation
+
+{evaluation}
+
+## Feedback
+
+{feedback}
+
+---
+
+## 🎯 Interview Complete!
+
+**Final Scorecard**
+
+| Metric | Result |
+|--------|--------|
+| Total Score | {total} / {max_score} |
+| Percentage | {percentage}% |
+| Grade | {grade} |
+
+Type **Start Mock Interview** or click the sidebar button to try again!
 """
 
         else:
