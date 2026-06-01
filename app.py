@@ -165,29 +165,42 @@ if len(st.session_state.messages) == 0:
     welcome_message = """
 👋 **Welcome to PrepIQ — AI Interview Coach!**
 
-Here's what I can do for you:
+Everything you need to crack your next interview.
 
 ---
 
-### 🗂️ Flow 1 — Resume Interview
-Type: **review my resume**
-> I'll ask you to paste your resume, then generate **5 personalized interview questions** based on your experience.
+### 😰 Empathy Check-in
+**I'm feeling anxious about my interview**
+> Nervous or overwhelmed? Tell me how you're feeling and I'll help you calm down and build confidence before we begin.
+> `anxiety relief` · `motivational boost` · `confidence building`
 
 ---
 
-### 📊 Flow 2 — Resume Gap Analysis
-Type: **I want to apply for DevOps role, here is the job description: [paste JD here]**
-> I'll ask for your resume, then tell you:
-> - ✅ What you already have
-> - ❌ What is missing
-> - 📝 Exact lines to add to get selected
+### 📄 Resume Interview
+**review my resume**
+> Paste your resume and I'll generate 5 personalised interview questions based on your actual experience.
+> `tailored questions` · `experience-based`
 
 ---
 
-### 🎤 Other Features
-- **Start Mock Interview** → Role-based technical interview
-- **Boost Confidence** → Motivational message
-- **Paste Resume in sidebar** → Get ATS Score + Suggestions
+### 📊 Resume Gap Analysis
+**I want to apply for [role], here is the JD: …**
+> Paste the job description and I'll compare it to your resume — what you have, what's missing, and exact lines to add.
+> `what you have` · `what is missing` · `lines to add`
+
+---
+
+### 🏷️ ATS Score + Suggestions
+**Give me an ATS score for my resume**
+> Get a score out of 100 for how well your resume passes applicant tracking systems, with specific fixes to improve it.
+> `keyword match` · `format check` · `score /100`
+
+---
+
+### 🎤 Mock Interview
+**Start a mock interview for my role**
+> I'll play the interviewer — role-based technical and behavioural questions one at a time, with feedback after each answer.
+> `role-based` · `real-time feedback` · `behavioural + technical`
 
 **Let's get started! 🚀**
 """
