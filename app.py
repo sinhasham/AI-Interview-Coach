@@ -7,6 +7,8 @@ from prompts.system_prompt import SYSTEM_PROMPT
 
 from resume.ats_scorer import calculate_ats_score
 from resume.resume_reviewer import review_resume
+from resume.pdf_parser import extract_resume_text
+from resume.resume_interviewer import generate_resume_questions
 
 from mock_interview.interviewer import start_mock_interview, get_questions
 from mock_interview.evaluator import evaluate_answer
@@ -34,6 +36,29 @@ client = Groq(
 )
 
 # ==========================
+# RESUME PDF UPLOAD HANDLING
+# ==========================
+
+if uploaded_resume := st.session_state.get("uploaded_resume"):
+
+    resume_text = extract_resume_text(
+        uploaded_resume
+    )
+
+    analysis = generate_resume_questions(
+        resume_text,
+        client
+    )
+
+    st.sidebar.subheader(
+        "Resume Analysis"
+    )
+
+    st.sidebar.write(
+        analysis
+    )
+
+# ==========================
 # TITLE
 # ==========================
 
@@ -54,8 +79,32 @@ role = st.sidebar.selectbox(
     ["DevOps", "AWS", "SDE", "Data Analyst"]
 )
 
-resume_text = st.sidebar.text_area(
-    "Paste Resume Here"
+uploaded_resume = st.sidebar.file_uploader(
+    "Upload Resume (PDF)",
+    type=["pdf"]
+)
+
+if uploaded_resume:
+
+    resume_text = extract_resume_text(
+        uploaded_resume
+    )
+
+    analysis = generate_resume_questions(
+        resume_text,
+        client
+    )
+
+    st.sidebar.subheader(
+        "Resume Analysis"
+    )
+
+    st.sidebar.write(
+        analysis
+    )
+
+resume_text_manual = st.sidebar.text_area(
+    "Or Paste Resume Here"
 )
 
 mock_mode = st.sidebar.checkbox(
@@ -90,10 +139,10 @@ if st.sidebar.button("Start Mock Interview"):
         }
     )
 
-if resume_text:
+if resume_text_manual:
 
     ats_score = calculate_ats_score(
-        resume_text
+        resume_text_manual
     )
 
     st.sidebar.success(
@@ -101,7 +150,7 @@ if resume_text:
     )
 
     suggestions = review_resume(
-        resume_text,
+        resume_text_manual,
         role
     )
 
