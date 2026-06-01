@@ -7,8 +7,6 @@ from prompts.system_prompt import SYSTEM_PROMPT
 
 from resume.ats_scorer import calculate_ats_score
 from resume.resume_reviewer import review_resume
-from resume.pdf_parser import extract_resume_text
-from resume.resume_interviewer import generate_resume_questions
 
 from mock_interview.interviewer import start_mock_interview, get_questions
 from mock_interview.evaluator import evaluate_answer
@@ -21,8 +19,8 @@ from confidence.confidence_builder import motivate
 # ==========================
 
 st.set_page_config(
-    page_title="AI Interview Coach",
-    page_icon="🎯"
+    page_title="PrepIQ — AI Interview Coach",
+    page_icon="🧠"
 )
 
 # ==========================
@@ -36,37 +34,16 @@ client = Groq(
 )
 
 # ==========================
-# RESUME PDF UPLOAD HANDLING
-# ==========================
-
-if uploaded_resume := st.session_state.get("uploaded_resume"):
-
-    resume_text = extract_resume_text(
-        uploaded_resume
-    )
-
-    analysis = generate_resume_questions(
-        resume_text,
-        client
-    )
-
-    st.sidebar.subheader(
-        "Resume Analysis"
-    )
-
-    st.sidebar.write(
-        analysis
-    )
-
-# ==========================
 # TITLE
 # ==========================
 
-st.title("🎯 AI Interview Coach")
+st.title("PrepIQ — AI Interview Coach")
 
 st.caption(
-    "Practice HR, DevOps, AWS, DSA, Resume Reviews, Mock Interviews & Project Discussions"
+    "From resume to offer letter · Mock Interviews · Resume Gap Analysis · ATS Scoring · Role-based Coaching"
 )
+
+st.markdown("---")
 
 # ==========================
 # SIDEBAR TOOLS
@@ -79,32 +56,8 @@ role = st.sidebar.selectbox(
     ["DevOps", "AWS", "SDE", "Data Analyst"]
 )
 
-uploaded_resume = st.sidebar.file_uploader(
-    "Upload Resume (PDF)",
-    type=["pdf"]
-)
-
-if uploaded_resume:
-
-    resume_text = extract_resume_text(
-        uploaded_resume
-    )
-
-    analysis = generate_resume_questions(
-        resume_text,
-        client
-    )
-
-    st.sidebar.subheader(
-        "Resume Analysis"
-    )
-
-    st.sidebar.write(
-        analysis
-    )
-
 resume_text_manual = st.sidebar.text_area(
-    "Or Paste Resume Here"
+    "Paste Resume Here"
 )
 
 mock_mode = st.sidebar.checkbox(
@@ -116,7 +69,6 @@ if st.sidebar.button("Boost Confidence"):
         motivate()
     )
 
-# Start Mock Interview button in sidebar — opens question in chat
 if st.sidebar.button("Start Mock Interview"):
 
     questions = get_questions(role)
@@ -182,6 +134,29 @@ if "interview_questions" not in st.session_state:
 if "interview_scores" not in st.session_state:
     st.session_state.interview_scores = []
 
+# Resume interview flow
+if "resume_interview_active" not in st.session_state:
+    st.session_state.resume_interview_active = False
+
+if "resume_interview_index" not in st.session_state:
+    st.session_state.resume_interview_index = 0
+
+if "resume_interview_questions" not in st.session_state:
+    st.session_state.resume_interview_questions = []
+
+if "waiting_for_resume" not in st.session_state:
+    st.session_state.waiting_for_resume = False
+
+# Gap analysis flow
+if "waiting_for_resume_gap" not in st.session_state:
+    st.session_state.waiting_for_resume_gap = False
+
+if "gap_job_description" not in st.session_state:
+    st.session_state.gap_job_description = ""
+
+if "gap_role" not in st.session_state:
+    st.session_state.gap_role = ""
+
 # Display previous messages
 
 for message in st.session_state.messages:
@@ -197,8 +172,6 @@ prompt = st.chat_input(
 )
 
 if prompt:
-
-    # Show user message
 
     st.session_state.messages.append(
         {
@@ -228,10 +201,6 @@ if prompt:
     else:
         emotion = "Neutral"
 
-    # ==========================
-    # HIDDEN CHAIN OF EMPATHY
-    # ==========================
-
     if emotion in ["Fear", "Anxiety"]:
 
         empathy_chain = [
@@ -253,10 +222,6 @@ if prompt:
             "User wants interview guidance."
         ]
 
-    # ==========================
-    # HIDDEN CHAIN OF THOUGHT
-    # ==========================
-
     reasoning_chain = [
         "Understand user query",
         "Identify interview topic",
@@ -264,17 +229,11 @@ if prompt:
         "Provide practical guidance"
     ]
 
-    # DEBUG IN TERMINAL ONLY
-
     print("\n====================")
     print("Emotion:", emotion)
     print("Empathy Chain:", empathy_chain)
     print("Reasoning Chain:", reasoning_chain)
     print("====================\n")
-
-    # ==========================
-    # BUILD CONVERSATION
-    # ==========================
 
     conversation = [
         {
@@ -291,32 +250,185 @@ if prompt:
 
     try:
 
-        if prompt.lower() == "start mock interview":
+        # ==========================
+        # FLOW 2 — GAP ANALYSIS TRIGGER
+        # Detects: "I want to apply for X role"
+        # ==========================
 
-            questions = get_questions(role)
+        if any(phrase in prompt.lower() for phrase in [
+            "i want to apply",
+            "want to apply for",
+            "applying for",
+            "job description",
+            "here is the job",
+            "here is jd",
+            "this is the jd",
+            "this is the job description"
+        ]):
 
-            st.session_state.interview_active = True
-            st.session_state.interview_questions = questions
-            st.session_state.interview_index = 0
+            st.session_state.waiting_for_resume_gap = True
+            st.session_state.gap_job_description = prompt
+
+            detected_role = role
+            for r in ["devops", "aws", "sde", "data analyst", "backend", "frontend", "fullstack"]:
+                if r in prompt.lower():
+                    detected_role = r.title()
+                    break
+
+            st.session_state.gap_role = detected_role
+
+            bot_reply = f"""
+📋 **Job Description received for {detected_role} role!**
+
+Now please **paste your resume** below and I will compare it against this JD and tell you:
+
+✅ What you already have  
+❌ What is missing  
+📝 Exact lines to add to get selected
+"""
+
+        # ==========================
+        # FLOW 2 — USER PASTES RESUME FOR GAP ANALYSIS
+        # ==========================
+
+        elif st.session_state.waiting_for_resume_gap:
+
+            st.session_state.waiting_for_resume_gap = False
+
+            user_resume = prompt
+            jd = st.session_state.gap_job_description
+            target_role = st.session_state.gap_role
+
+            gap_prompt = f"""
+You are an expert ATS resume coach and career advisor.
+
+The candidate wants to apply for: {target_role}
+
+Job Description:
+{jd}
+
+Candidate Resume:
+{user_resume}
+
+Analyze the resume against the job description and give a detailed report in this exact format:
+
+## ✅ What You Already Have
+List the skills, experience, and keywords from the JD that are already present in the resume.
+
+## ❌ What Is Missing
+List the skills, tools, certifications, or experience mentioned in the JD that are NOT in the resume.
+
+## 📝 Lines to Add to Your Resume
+Write exact bullet points the candidate should add to their resume to match the JD and pass ATS screening. Make them professional and impactful.
+
+## 🎯 Overall Match Score
+Give a score like: Your resume matches X% of this job description.
+"""
+
+            gap_response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": gap_prompt}],
+                temperature=0.5,
+                max_tokens=1000
+            )
+
+            bot_reply = gap_response.choices[0].message.content
+
+        # ==========================
+        # FLOW 1 — RESUME INTERVIEW TRIGGER
+        # ==========================
+
+        elif any(word in prompt.lower() for word in [
+            "resume interview",
+            "interview from resume",
+            "questions from resume",
+            "review my resume",
+            "resume based",
+            "based on my resume"
+        ]):
+
+            st.session_state.waiting_for_resume = True
+            st.session_state.resume_interview_active = False
+
+            bot_reply = """
+📄 **Resume Interview Mode**
+
+Please **paste your resume text** below and I will generate 5 personalized interview questions based on your experience and skills.
+"""
+
+        # ==========================
+        # FLOW 1 — USER PASTES RESUME FOR INTERVIEW
+        # ==========================
+
+        elif st.session_state.waiting_for_resume:
+
+            st.session_state.waiting_for_resume = False
+
+            resume_text = prompt
+
+            resume_prompt = f"""
+You are an expert technical interviewer.
+
+Based on the following resume, generate exactly 5 interview questions that are specific to this candidate's experience, skills, and projects.
+
+Resume:
+{resume_text}
+
+Format exactly like this:
+1. ...
+2. ...
+3. ...
+4. ...
+5. ...
+
+Only output the 5 questions. Nothing else.
+"""
+
+            resume_response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": resume_prompt}],
+                temperature=0.7,
+                max_tokens=500
+            )
+
+            questions_text = resume_response.choices[0].message.content
+
+            questions = []
+            for line in questions_text.strip().splitlines():
+                line = line.strip()
+                if line and line[0].isdigit():
+                    question = line.split(".", 1)[-1].strip()
+                    questions.append(question)
+
+            if not questions:
+                questions = ["Tell me about yourself and your experience."]
+
+            st.session_state.resume_interview_active = True
+            st.session_state.resume_interview_questions = questions
+            st.session_state.resume_interview_index = 0
             st.session_state.interview_scores = []
 
             bot_reply = f"""
-🎤 Mock Interview Started for **{role}**
+✅ **Resume received! Starting your personalized interview.**
+
+---
 
 **Question 1:**
 
 {questions[0]}
 """
 
-        elif st.session_state.interview_active:
+        # ==========================
+        # FLOW 1 — RESUME INTERVIEW IN PROGRESS
+        # ==========================
+
+        elif st.session_state.resume_interview_active:
 
             answer = prompt
-
-            current_index = st.session_state.interview_index
-            questions = st.session_state.interview_questions
+            current_index = st.session_state.resume_interview_index
+            questions = st.session_state.resume_interview_questions
             next_index = current_index + 1
 
-            # Ask Groq to evaluate and give correct answer
             eval_prompt = f"""
 The interview question was:
 {questions[current_index]}
@@ -344,8 +456,127 @@ Ideal Answer: ...
 
             evaluation = eval_response.choices[0].message.content
 
-            # Parse score from evaluation for scorecard
-            score = 5  # default
+            score = 5
+            for line in evaluation.splitlines():
+                if line.lower().startswith("score:"):
+                    try:
+                        score = int(line.split(":")[1].strip().split("/")[0])
+                    except:
+                        score = 5
+
+            st.session_state.interview_scores.append(score)
+
+            if next_index < len(questions):
+
+                st.session_state.resume_interview_index = next_index
+
+                bot_reply = f"""
+## 📊 Evaluation
+
+{evaluation}
+
+---
+
+**Question {next_index + 1}:**
+
+{questions[next_index]}
+"""
+
+            else:
+
+                st.session_state.resume_interview_active = False
+
+                total = sum(st.session_state.interview_scores)
+                max_score = len(questions) * 10
+                percentage = int((total / max_score) * 100)
+
+                if percentage >= 80:
+                    grade = "🏆 Excellent"
+                elif percentage >= 60:
+                    grade = "👍 Good"
+                elif percentage >= 40:
+                    grade = "⚠️ Needs Improvement"
+                else:
+                    grade = "📚 Keep Practicing"
+
+                bot_reply = f"""
+## 📊 Evaluation
+
+{evaluation}
+
+---
+
+## 🎯 Resume Interview Complete!
+
+| Metric | Result |
+|--------|--------|
+| Total Score | {total} / {max_score} |
+| Percentage | {percentage}% |
+| Grade | {grade} |
+
+Type **review my resume** to start again!
+"""
+
+        # ==========================
+        # MOCK INTERVIEW TRIGGER
+        # ==========================
+
+        elif prompt.lower() == "start mock interview":
+
+            questions = get_questions(role)
+
+            st.session_state.interview_active = True
+            st.session_state.interview_questions = questions
+            st.session_state.interview_index = 0
+            st.session_state.interview_scores = []
+
+            bot_reply = f"""
+🎤 Mock Interview Started for **{role}**
+
+**Question 1:**
+
+{questions[0]}
+"""
+
+        # ==========================
+        # MOCK INTERVIEW IN PROGRESS
+        # ==========================
+
+        elif st.session_state.interview_active:
+
+            answer = prompt
+            current_index = st.session_state.interview_index
+            questions = st.session_state.interview_questions
+            next_index = current_index + 1
+
+            eval_prompt = f"""
+The interview question was:
+{questions[current_index]}
+
+The user answered:
+{answer}
+
+Do these 3 things:
+1. Give a score out of 10 for this answer
+2. Give short feedback on what was good or missing
+3. Give the ideal correct answer they should have said
+
+Format your response exactly like this:
+Score: X/10
+Feedback: ...
+Ideal Answer: ...
+"""
+
+            eval_response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": eval_prompt}],
+                temperature=0.5,
+                max_tokens=500
+            )
+
+            evaluation = eval_response.choices[0].message.content
+
+            score = 5
             for line in evaluation.splitlines():
                 if line.lower().startswith("score:"):
                     try:
@@ -406,6 +637,10 @@ Ideal Answer: ...
 Type **Start Mock Interview** or click the sidebar button to try again!
 """
 
+        # ==========================
+        # NORMAL CHAT
+        # ==========================
+
         else:
 
             response = client.chat.completions.create(
@@ -420,10 +655,6 @@ Type **Start Mock Interview** or click the sidebar button to try again!
     except Exception as e:
 
         bot_reply = f"Error connecting to Groq API.\n\nDetails:\n{str(e)}"
-
-    # ==========================
-    # SHOW RESPONSE
-    # ==========================
 
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
