@@ -261,34 +261,59 @@ if prompt:
 
         elif st.session_state.interview_active:
 
-            # Treat any message as an answer during interview
-
             answer = prompt
-            evaluation = evaluate_answer(answer)
-            feedback = generate_feedback()
-
-            # Track score
-            score = min(len(answer) // 20, 10)
-            st.session_state.interview_scores.append(score)
 
             current_index = st.session_state.interview_index
             questions = st.session_state.interview_questions
             next_index = current_index + 1
 
-            if next_index < len(questions):
+            # Ask Groq to evaluate and give correct answer
+            eval_prompt = f"""
+The interview question was:
+{questions[current_index]}
 
-                # More questions remaining
+The user answered:
+{answer}
+
+Do these 3 things:
+1. Give a score out of 10 for this answer
+2. Give short feedback on what was good or missing
+3. Give the ideal correct answer they should have said
+
+Format your response exactly like this:
+Score: X/10
+Feedback: ...
+Ideal Answer: ...
+"""
+
+            eval_response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": eval_prompt}],
+                temperature=0.5,
+                max_tokens=500
+            )
+
+            evaluation = eval_response.choices[0].message.content
+
+            # Parse score from evaluation for scorecard
+            score = 5  # default
+            for line in evaluation.splitlines():
+                if line.lower().startswith("score:"):
+                    try:
+                        score = int(line.split(":")[1].strip().split("/")[0])
+                    except:
+                        score = 5
+
+            st.session_state.interview_scores.append(score)
+
+            if next_index < len(questions):
 
                 st.session_state.interview_index = next_index
 
                 bot_reply = f"""
-## Evaluation
+## 📊 Evaluation
 
 {evaluation}
-
-## Feedback
-
-{feedback}
 
 ---
 
@@ -298,8 +323,6 @@ if prompt:
 """
 
             else:
-
-                # All questions done — show final scorecard
 
                 st.session_state.interview_active = False
 
@@ -317,19 +340,13 @@ if prompt:
                     grade = "📚 Keep Practicing"
 
                 bot_reply = f"""
-## Evaluation
+## 📊 Evaluation
 
 {evaluation}
-
-## Feedback
-
-{feedback}
 
 ---
 
 ## 🎯 Interview Complete!
-
-**Final Scorecard**
 
 | Metric | Result |
 |--------|--------|
