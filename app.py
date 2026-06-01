@@ -67,6 +67,15 @@ if st.sidebar.button("Boost Confidence"):
         motivate()
     )
 
+# Start Mock Interview button in sidebar — opens question in chat
+if st.sidebar.button("Start Mock Interview"):
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": start_mock_interview(role)
+        }
+    )
+
 if resume_text:
 
     ats_score = calculate_ats_score(
@@ -90,11 +99,6 @@ if resume_text:
         st.sidebar.write(
             f"• {item}"
         )
-
-if mock_mode:
-    st.sidebar.info(
-        start_mock_interview(role)
-    )
 
 # ==========================
 # CHAT HISTORY
@@ -214,61 +218,7 @@ if prompt:
 
         if prompt.lower() == "start mock interview":
 
-            if role == "DevOps":
-
-                bot_reply = """
-🎤 Mock Interview Started
-
-Question 1:
-
-What is CI/CD?
-
-Reply using:
-
-Answer: your answer
-"""
-
-            elif role == "AWS":
-
-                bot_reply = """
-🎤 Mock Interview Started
-
-Question 1:
-
-What is EC2?
-
-Reply using:
-
-Answer: your answer
-"""
-
-            elif role == "SDE":
-
-                bot_reply = """
-🎤 Mock Interview Started
-
-Question 1:
-
-Explain OOPs.
-
-Reply using:
-
-Answer: your answer
-"""
-
-            else:
-
-                bot_reply = """
-🎤 Mock Interview Started
-
-Question 1:
-
-Tell me about yourself.
-
-Reply using:
-
-Answer: your answer
-"""
+            bot_reply = start_mock_interview(role)
 
         elif prompt.lower().startswith("answer:"):
 
